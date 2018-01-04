@@ -9,6 +9,7 @@ import hashlib
 import threading
 import json
 from Crypto.Cipher import AES
+from binascii import b2a_hex, a2b_hex
 
 #User
 class User():
@@ -46,12 +47,12 @@ class User():
     # create PayWallet
     def genPayWallet(self):
         timestamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time()))
+        #timestamp = time.strftime("%Y-%m-%d %H", time.localtime(time.time()))
         userWallet = (self.username + self.pwd + self.total + timestamp).encode('utf-8')
         # use AES encrpt userWallet
         userStream = self.Encrypt(userWallet)
         userInfo = hashlib.sha256(userStream).hexdigest()
         self.payStream = self.flag + self.userID + userInfo
-        print self.payStream
 
     # encode Qrcode
     def genQrCode(self):
@@ -63,7 +64,6 @@ class User():
     def deCode(self, filename):
         qr = qrtools.QR()
         qr.decode(filename)
-        print qr.data
 
      # Encrypt data
     def Encrypt(self, str):
@@ -72,14 +72,13 @@ class User():
         count = len(self.userID)
         add = length - (count % length)
         keys = self.userID + ('\0'*add)
-        print len(keys)
         obj = AES.new(keys, AES.MODE_CBC, 'This is an IV456')
         # 加密函数，如果text不是16的倍数【加密文本text必须为16的倍数！】，那就补足为16的倍数
         count = len(str)
         add = length - (count % length)
         text = str + ('\0' * add)
         ciphertext = obj.encrypt(text)
-        return ciphertext
+        return b2a_hex(ciphertext)
 
     # listen
     def listen(self):

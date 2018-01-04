@@ -17,6 +17,7 @@ class Server():
 
         #username and pwd
         self.users = [{'userID': 'you', 'username': 'test1234', 'pwd': 'Abcd@1234', 'total': '100'}]
+        self.shops = [{'shopID': 'EKSSJHGHGJDHG', 'shopName': 'HappyPay'}]
 
     def listen(self):
         print "[status] listenning"
@@ -32,7 +33,6 @@ class Server():
         count = len(key)
         add = length - (count % length)
         keys = key + ('\0' * add)
-        print len(keys)
         obj = AES.new(keys, AES.MODE_CBC, 'This is an IV456')
         # 加密函数，如果text不是16的倍数【加密文本text必须为16的倍数！】，那就补足为16的倍数
         count = len(str)
@@ -41,26 +41,50 @@ class Server():
         ciphertext = obj.encrypt(text)
         return b2a_hex(ciphertext)
 
+    # Decrypt
+    def decrypt(self, key, str):
+        length = 16
+        count = len(key)
+        add = length - (count % length)
+        keys = key + ('\0' * add)
+        cryptor = AES.new(keys, AES.MODE_CBC, 'This is an IV456')
+        plain_text = cryptor.decrypt(a2b_hex(str))
+        self.price = plain_text.rstrip('\0')
+
     def shopConn(self, sock, addr):
         print "[status] Accept order request from %s:%s"%addr
 
         data = sock.recv(1024)
         data = json.loads(data)
 
-        print data
+        #vertify shop
+        for shop in self.shops:
+            shopIDHash = hashlib.sha256(shop.get('shopID')).hexdigest()
+            if shopIDHash == data[0:64]:
+                self.shopID = shop.get('shopID')
+                self.shopName = shop.get('shopName')
+            else:
+                print 'invalid shopID'
 
-        #vertify user
-        userID = data[3:6]
-        print userID
+        #vertify price
+        self.decrypt(self.shopID, data[64:96])
+
+        # vertify user
+        userID = data[99:102]
         for user in self.users:
             if userID == user.get('userID'):
                 timestamp = time.strftime('%Y-%m-%d %H:%M', time.localtime(time.time()))
+                #timestamp = time.strftime("%Y-%m-%d %H", time.localtime(time.time()))
+                self.userName = user.get('username')
+                user.get('total')
                 userWallet = (user.get('username') + user.get('pwd') + user.get('total')+ timestamp).encode('utf-8')
                 userStream = self.Encrypt(user.get('userID'), userWallet)
                 self.userInfo = hashlib.sha256(userStream).hexdigest()
-        print self.userInfo
-        if self.userInfo == data[6:]:
+        if self.userInfo == data[102:]:
             print "[status] Vertify Pay Success"
+            print "Shop Name: " + self.shopName
+            print "Price: " + self.price
+            print "Pay From: " + self.userName
         else:
             print "[status] Vertify Pay Fail"
 

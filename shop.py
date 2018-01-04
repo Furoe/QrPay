@@ -28,11 +28,11 @@ class Shop():
         check = userInfo[0:3]
         if check == self.flag:
             print "Recognize flag success"
-            print userInfo
+            # 32
             orderPrice = self.Encrypt(self.shopID, price)
+            # 64
             shop = hashlib.sha256(self.shopID).hexdigest()
             orderInfo = shop + orderPrice + userInfo
-            print orderInfo
 
             #can't remove flag, if removed ,it's easy to know where the flag is
             self.launchOrder(orderInfo)
