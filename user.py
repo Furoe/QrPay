@@ -4,12 +4,11 @@
 import pyqrcode
 import qrtools
 import time
-import base64
 import socket
 import hashlib
 import threading
 import json
-import rsa
+from Crypto.Cipher import AES
 
 #User
 class User():
@@ -17,6 +16,8 @@ class User():
         self.username = 'test1234'
         self.pwd = 'Abcd@1234'
         self.total = '100'
+        self.flag = '5ac'
+        self.userID = 'you'
 
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.bind(('127.0.0.1', 45678))
@@ -47,7 +48,9 @@ class User():
         timestamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time()))
         userWallet = (self.username + self.pwd + self.total + timestamp).encode('utf-8')
         # use AES encrpt userWallet
-        self.payStream = hashlib.sha256(userWallet).hexdigest()
+        userStream = self.Encrypt(userWallet)
+        userInfo = hashlib.sha256(userStream).hexdigest()
+        self.payStream = self.flag + self.userID + userInfo
         print self.payStream
 
     # encode Qrcode
@@ -61,6 +64,22 @@ class User():
         qr = qrtools.QR()
         qr.decode(filename)
         print qr.data
+
+     # Encrypt data
+    def Encrypt(self, str):
+        # 这里密钥key 长度必须为16（AES-128）、24（AES-192）、或32（AES-256）Bytes 长度.目前AES-128足够用
+        length = 16
+        count = len(self.userID)
+        add = length - (count % length)
+        keys = self.userID + ('\0'*add)
+        print len(keys)
+        obj = AES.new(keys, AES.MODE_CBC, 'This is an IV456')
+        # 加密函数，如果text不是16的倍数【加密文本text必须为16的倍数！】，那就补足为16的倍数
+        count = len(str)
+        add = length - (count % length)
+        text = str + ('\0' * add)
+        ciphertext = obj.encrypt(text)
+        return ciphertext
 
     # listen
     def listen(self):
